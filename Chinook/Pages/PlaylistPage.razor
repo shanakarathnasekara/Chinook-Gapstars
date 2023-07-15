@@ -2,8 +2,12 @@
 @attribute [Authorize]
 
 @using Chinook.Models
+@using Chinook.Services.Playlist;
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims;
+
+@inject ChinookContext DbContext;
+@inject IPlaylistService playListService;
 
 <h1>Playlist <strong>@Playlist.Name</strong></h1>
 
@@ -101,16 +105,17 @@ else
         return userId;
     }
 
-    private void FavoriteTrack(long trackId)
+    private async Task FavoriteTrack(long trackId)
     {
-        var track = Playlist.Tracks.FirstOrDefault(t => t.TrackId == trackId);
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist Favorites.";
+        var track = await playListService.AddTrackToFavorites(trackId);
+
+        InfoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
     }
 
-    private void UnfavoriteTrack(long trackId)
+    private async Task UnfavoriteTrack(long trackId)
     {
-        var track = Playlist.Tracks.FirstOrDefault(t => t.TrackId == trackId);
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist Favorites.";
+        var track = await playListService.RemoveTrackFromFavorites(trackId);
+        InfoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
     }
 
     private void RemoveTrack(long trackId)

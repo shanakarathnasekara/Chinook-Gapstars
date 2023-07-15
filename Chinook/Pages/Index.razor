@@ -4,6 +4,8 @@
 @using Chinook.Models
 @using Microsoft.EntityFrameworkCore
 
+@inject ChinookContext DbContext
+
 <PageTitle>Index</PageTitle>
 
 <h1>Artists</h1>
@@ -44,15 +46,13 @@ else
 
     public async Task<List<Artist>> GetArtists()
     {   
-        var dbContext = await DbFactory.CreateDbContextAsync();
-        var users = dbContext.Users.Include(a => a.UserPlaylists).ToList();
-        
-        return dbContext.Artists.ToList();
+        var users = DbContext.Users.Include(a => a.UserPlaylists).ToList();
+
+        return DbContext.Artists.Include(art => art.Albums).ToList();
     }
 
     public async Task<List<Album>> GetAlbumsForArtist(int artistId)
     {
-        var dbContext = await DbFactory.CreateDbContextAsync();
-        return dbContext.Albums.Where(a => a.ArtistId == artistId).ToList();
+        return DbContext.Albums.Where(a => a.ArtistId == artistId).ToList();
     }
 }
