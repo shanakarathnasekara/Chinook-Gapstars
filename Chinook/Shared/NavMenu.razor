@@ -43,7 +43,7 @@
 @code {
     private bool collapseNavMenu = true;
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
-    private string CurrentUserId;
+    private string currentUserId;
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
@@ -52,8 +52,8 @@
     protected override async Task OnInitializedAsync()
     {
         await InvokeAsync(StateHasChanged);
-        CurrentUserId = await GetUserId();
-        UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(CurrentUserId);
+        currentUserId = await GetUserId();
+        UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(currentUserId);
         eventsService.PlaylistItemAdded += HandleEventChanged;
     }
 
@@ -61,7 +61,7 @@
     {
        Task.Run(async () =>
          {
-             UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(CurrentUserId);
+              UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(currentUserId);
              await InvokeAsync(StateHasChanged);
          });
     }

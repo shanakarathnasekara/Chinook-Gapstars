@@ -1,6 +1,8 @@
 ﻿using Chinook.ClientModels;
 using Chinook.Models;
+using Chinook.Shared.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace Chinook.Services.Playlist
 {
@@ -13,12 +15,13 @@ namespace Chinook.Services.Playlist
             this._dbContext = dbContext;
         }
 
+        #region Public methods
         public async Task<Track> AddTrackToFavorites(long trackId)
         {
             var favoritePlaylist = await _dbContext.Playlists.FirstOrDefaultAsync(p => p.Name == "Favorites");
             if (favoritePlaylist == null)
             {
-                return null;
+                await AddFavoritesPlaylist();
             }
 
             var track = await _dbContext.Tracks.FirstOrDefaultAsync(t => t.TrackId == trackId);
@@ -36,8 +39,7 @@ namespace Chinook.Services.Playlist
             var favoritePlaylist = await _dbContext.Playlists.FirstOrDefaultAsync(p => p.Name == "Favorites");
             if (favoritePlaylist == null)
             {
-                // Handle the case when the "Favorites" playlist is not found
-                return null; // Or throw an exception, return a default value, etc.
+                return null;
             }
 
             var track = await _dbContext.Tracks.Include(a => a.Playlists).FirstOrDefaultAsync(t => t.TrackId == trackId);
@@ -111,11 +113,10 @@ namespace Chinook.Services.Playlist
             await _dbContext.SaveChangesAsync();
 
 
-            var track = _dbContext.Tracks.FirstOrDefault(t => t.TrackId == selectedTrack.TrackId);
-            var trackData = await _dbContext.Tracks.Where(t => t.TrackId == selectedTrack.TrackId).Include(a => a.Playlists).FirstOrDefaultAsync();
-            var favoritePlaylist = await _dbContext.Playlists.Where(p => p.Name == newPlaylistName).FirstOrDefaultAsync();
-            trackData.Playlists.Add(favoritePlaylist);
-            _dbContext.Tracks.Update(trackData);
+            var track = await _dbContext.Tracks.Where(t => t.TrackId == selectedTrack.TrackId).Include(a => a.Playlists).FirstOrDefaultAsync();
+            var newPlayList = await _dbContext.Playlists.Where(p => p.Name == newPlaylistName).FirstOrDefaultAsync();
+            track.Playlists.Add(newPlayList);
+            _dbContext.Tracks.Update(track);
 
             UserPlaylist userPlaylist = new UserPlaylist()
             {
@@ -136,7 +137,7 @@ namespace Chinook.Services.Playlist
             _dbContext.Tracks.Update(track);
             await _dbContext.SaveChangesAsync();
 
-            this.RemovePlaylist(23, "19bb6f74-d083-498f-a188-d1cd6e7979f0");
+            //this.DeletePlaylist(23, "19bb6f74-d083-498f-a188-d1cd6e7979f0");
         }
 
         public async Task AddTrackToPlaylist(PlaylistTrack selectedTrack, string playlistName)
@@ -147,8 +148,25 @@ namespace Chinook.Services.Playlist
             _dbContext.Tracks.Update(trackData);
             await _dbContext.SaveChangesAsync();
         }
+        #endregion
 
-        private async Task RemovePlaylist(long playlistId, string currentuserId)
+        #region Private methods
+        // In the initial phase if favorites playlist doesnot exist
+        private async Task AddFavoritesPlaylist()
+        {
+
+            Models.Playlist favorites = new Models.Playlist()
+            {
+                Name = "Favorites",
+                PlaylistId = _dbContext.Playlists.OrderBy(a => a.PlaylistId).Last().PlaylistId + 1
+            };
+            _dbContext.Playlists.Add(favorites);
+            await _dbContext.SaveChangesAsync();
+        }
+
+
+        // In the future if needed the support to delete playlist
+        private async Task DeletePlaylist(long playlistId, string currentuserId)
         {
             var playlist = await _dbContext.Playlists.Where(p => p.PlaylistId == playlistId).FirstOrDefaultAsync();
             _dbContext.Playlists.Remove(playlist);
@@ -158,27 +176,6 @@ namespace Chinook.Services.Playlist
             _dbContext.UserPlaylists.Remove(userPlaylist);
             await _dbContext.SaveChangesAsync();
         }
-
-        private async Task AddFavoritesPlaylist()
-        {
-            var favoritePlaylist = new Chinook.Models.Playlist()
-            {
-                PlaylistId = 19,
-                Name = "Favorites"
-            };
-            _dbContext.Playlists.Add(favoritePlaylist);
-            await _dbContext.SaveChangesAsync();
-        }
-
-        private async Task AddUserToPlaylist(string currentUserId)
-        {
-            UserPlaylist userPlaylist = new UserPlaylist()
-            {
-                UserId = currentUserId,
-                PlaylistId = 15
-            };
-            _dbContext.UserPlaylists.Add(userPlaylist);
-            await _dbContext.SaveChangesAsync();
-        }
+        #endregion
     }
 }

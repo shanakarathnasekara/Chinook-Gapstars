@@ -8,21 +8,21 @@
 
 @inject IPlaylistService playListService;
 
-<h1>Playlist <strong>@Playlist.Name</strong></h1>
+<h1>Playlist <strong>@_playlist.Name</strong></h1>
 
-@if (!string.IsNullOrWhiteSpace(InfoMessage))
+@if (!string.IsNullOrWhiteSpace(_infoMessage))
 {
     <div class="alert alert-info fade show">
         <div class="d-flex align-items-start">
             <div class="flex-grow-1">
-                @InfoMessage
+                @_infoMessage
             </div>
             <button type="button" class="btn-close" aria-label="Close" @onclick="CloseInfoMessage"></button>
         </div>
     </div>
 }
 
-@if (Playlist == null)
+@if (_playlist == null)
 {
      <Loading />
 }
@@ -36,13 +36,13 @@ else
         </tr>
         </thead>
         <tbody>
-            @foreach (var track in Playlist.Tracks)
+            @foreach (var track in _playlist.Tracks)
             {
                 <tr>
                     <td>@track.ArtistName - @track.AlbumTitle - @track.TrackName</td>
                     <td>
                         <div class="d-flex">
-                            @if (Playlist.Name != "Favorites")
+                            @if (_playlist.Name != "Favorites")
                             {
                                 @if (track.IsFavorite)
                                 {
@@ -54,7 +54,7 @@ else
                                 }
 
                             }
-                            <a href="#" class="m-1 pl-3" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId, Playlist.Name))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
+                            <a href="#" class="m-1 pl-3" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId, _playlist.Name))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
                         </div>
                     </td>
                 </tr>
@@ -67,20 +67,20 @@ else
     [Parameter] public long PlaylistId { get; set; }
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
 
-    private Chinook.ClientModels.Playlist Playlist;
-    private string CurrentUserId;
-    private string InfoMessage;
+    private ClientModels.Playlist _playlist;
+    private string _currentUserId;
+    private string _infoMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        CurrentUserId = await GetUserId();
+        _currentUserId = await GetUserId();
         await InvokeAsync(StateHasChanged);
-        Playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, CurrentUserId);
+        _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        Playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, CurrentUserId);
+        _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
     }
 
     private async Task<string> GetUserId()
@@ -93,27 +93,27 @@ else
     private async Task FavoriteTrack(long trackId)
     {
         var track = await playListService.AddTrackToFavorites(trackId);
-        Playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, CurrentUserId);
-        InfoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
+        _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
+        _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
     }
 
     private async Task UnfavoriteTrack(long trackId)
     {
         var track = await playListService.RemoveTrackFromFavorites(trackId);
-        Playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, CurrentUserId);
-        InfoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
+        _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
+        _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
     }
 
     private async void RemoveTrack(long trackId, string playlistName)
     {
         await playListService.RemoveTrackFromPlaylist(trackId, playlistName);
-        Playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, CurrentUserId);
+        _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
         CloseInfoMessage();
     }
 
     private void CloseInfoMessage()
     {
-        InfoMessage = "";
+        _infoMessage = "";
     }
 
 }
