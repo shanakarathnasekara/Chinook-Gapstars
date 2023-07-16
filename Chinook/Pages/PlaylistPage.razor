@@ -55,7 +55,7 @@ else
                                 }
 
                             }
-                            <a href="#" class="m-1" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
+                            <a href="#" class="m-1" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId, Playlist.Name))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
                         </div>
                     </td>
                 </tr>
@@ -72,6 +72,7 @@ else
     private Chinook.ClientModels.Playlist Playlist;
     private string CurrentUserId;
     private string InfoMessage;
+    private string currentUrl;
 
     protected override async Task OnInitializedAsync()
     {
@@ -118,10 +119,10 @@ else
         InfoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
     }
 
-    private void RemoveTrack(long trackId)
+    private async void RemoveTrack(long trackId, string playlistName)
     {
+        await playListService.RemoveTrackFromPlaylist(trackId, playlistName);
         CloseInfoMessage();
-
     }
 
     private void CloseInfoMessage()

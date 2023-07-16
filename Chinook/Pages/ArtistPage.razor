@@ -72,6 +72,8 @@ else
     private PlaylistTrack SelectedTrack;
     private string InfoMessage;
     private string CurrentUserId;
+    private string NewPlayList = "";
+    private string DropDownSelection = "";
 
     private List<Chinook.Models.Playlist> PlaylistData;
 
@@ -83,6 +85,8 @@ else
         Artist = DbContext.Artists.Include(a => a.Albums).SingleOrDefault(a => a.ArtistId == ArtistId);
 
         Tracks = await playListService.RetrieveTracksList(Artist.ArtistId, CurrentUserId);
+
+        PlaylistData = await playListService.RetrieveUsersListofPlaylist(CurrentUserId);
     }
 
     private async Task<string> GetUserId()
@@ -121,11 +125,26 @@ else
         PlaylistDialog.Open();
     }
 
-    private void AddTrackToPlaylist()
+    private async void AddTrackToPlaylist()
     {
+        if (NewPlayList == "")
+        {
+            await playListService.AddTrackToPlaylist(SelectedTrack, DropDownSelection);
+        } 
+        else
+        {
+            await playListService.AddNewPlaylist(SelectedTrack, NewPlayList, CurrentUserId);
+        }
+
         CloseInfoMessage();
+
         InfoMessage = $"Track {Artist.Name} - {SelectedTrack.AlbumTitle} - {SelectedTrack.TrackName} added to playlist {{playlist name}}.";
         PlaylistDialog.Close();
+    }
+
+    public async void AddTrackToPlaylistDropdown(string playlistName)
+    {
+        DropDownSelection = playlistName;
     }
 
     private void CloseInfoMessage()
@@ -149,7 +168,7 @@ else
         UserPlaylist userPlaylist = new UserPlaylist()
             {
                 UserId = CurrentUserId,
-                PlaylistId = 19
+                PlaylistId = 15
             };
         DbContext.UserPlaylists.Add(userPlaylist);
         await DbContext.SaveChangesAsync();
@@ -177,15 +196,16 @@ else
 
         <div class="form-group mb-2">
             <label for="ExistingPlaylist">Add to existing playlist</label>
-            <select class="form-control" id="ExistingPlaylist">
-                <option>Playlist 1</option>
-                <option>Playlist 2</option>
-                <option>Playlist 3</option>
+            <select class="form-control" id="ExistingPlaylist" @onchange="@(e => AddTrackToPlaylistDropdown(e.Value.ToString()))">
+                @foreach (var playlist in PlaylistData)
+                {
+                    <option value="@playlist.Name">@playlist.Name</option>
+                }
             </select>
         </div>
         <div class="form-group mb-2">
             <label for="NewPlaylist">Create new playlist</label>
-            <input type="text" id="NewPlaylist" class="form-control" placeholder="Name for the new playlist">
+            <input type="text" id="NewPlaylist" class="form-control" placeholder="Name for the new playlist" @bind="@NewPlayList">
         </div>
     </Body>
     <Footer>

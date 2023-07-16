@@ -1,4 +1,8 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using Chinook.Services.Playlist;
+@using System.Security.Claims;
+@inject IPlaylistService playlistService;
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Chinook</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
@@ -19,17 +23,58 @@
                 <i class="bi bi-music-note-list me-3" style="font-size: 1.25em"></i>My favorite tracks
             </NavLink>
         </div>
+        <div class="nav-item px-3">
+            @foreach(var userPlaylist in UserPlaylistData)
+            {
+                <NavLink class="nav-link" href=@($"playlist/{userPlaylist.PlaylistId}")>
+                    <i class="bi bi-music-note-beamed me-3" style="font-size: 1.25em"></i>
+                    <span class="playlist-name">@TruncateText(userPlaylist.Name, 20)</span>
+                </NavLink>
+            }
+        </div>
 
     </nav>
 </div>
 
 @code {
     private bool collapseNavMenu = true;
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private string CurrentUserId;
+
+
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    public List<Models.Playlist> UserPlaylistData;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await InvokeAsync(StateHasChanged);
+        CurrentUserId = await GetUserId();
+        UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(CurrentUserId);
+    }
+
+    private async Task<string> GetUserId()
+    {
+        var user = (await authenticationState).User;
+        var userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+        return userId;
+    }
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (text.Length > maxLength)
+        {
+            return text.Substring(0, maxLength) + "...";
+        }
+        else
+        {
+            return text;
+        }
     }
 }
