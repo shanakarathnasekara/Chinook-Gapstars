@@ -1,15 +1,15 @@
 ﻿@page "/artist/{ArtistId:long}"
-@attribute [Authorize]
-
-@using Chinook.Models
-@using Chinook.ClientModels
+@using Chinook.ClientModels;
+@using Chinook.Models;
 @using Chinook.Services.Artists;
+@using Chinook.Services.EventsStreaming;
 @using Chinook.Services.Playlist;
-@using Microsoft.EntityFrameworkCore
 @using System.Security.Claims;
+@attribute [Authorize]
 
 @inject IPlaylistService playListService;
 @inject IArtistService artistService;
+@inject EventsService eventsService;
 
 @if (!string.IsNullOrWhiteSpace(InfoMessage))
 {
@@ -133,6 +133,7 @@ else
         else
         {
             await playListService.AddNewPlaylist(SelectedTrack, NewPlayList, CurrentUserId);
+            eventsService.UpdatePlaylistItemAddedEvent();
         }
 
         CloseInfoMessage();

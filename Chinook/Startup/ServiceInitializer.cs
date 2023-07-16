@@ -5,6 +5,7 @@ using Chinook.Models;
 using Chinook.Services.Playlist;
 using Chinook.Services.Albums;
 using Chinook.Services.Artists;
+using Chinook.Services.EventsStreaming;
 
 namespace Chinook.Startup
 {
@@ -23,6 +24,7 @@ namespace Chinook.Startup
             services.AddScoped<IPlaylistService, PlaylistService>();
             services.AddScoped<IAlbumService, AlbumService>();
             services.AddScoped<IArtistService, ArtistService>();
+            services.AddScoped<EventsService>();
         }
 
         public static void RegisterDatabaseInitializer(IServiceCollection services, IConfiguration config)

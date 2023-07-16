@@ -1,6 +1,10 @@
 ﻿@using Chinook.Services.Playlist;
 @using System.Security.Claims;
+@using Chinook.Services;
+@using Chinook.Services.EventsStreaming;
 @inject IPlaylistService playlistService;
+@inject EventsService eventsService;
+
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -50,6 +54,21 @@
         await InvokeAsync(StateHasChanged);
         CurrentUserId = await GetUserId();
         UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(CurrentUserId);
+        eventsService.PlaylistItemAdded += HandleEventChanged;
+    }
+
+    private void HandleEventChanged()
+    {
+       Task.Run(async () =>
+         {
+             UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(CurrentUserId);
+             await InvokeAsync(StateHasChanged);
+         });
+    }
+
+    protected void Dispose()
+    {
+        eventsService.PlaylistItemAdded -= HandleEventChanged;
     }
 
 
