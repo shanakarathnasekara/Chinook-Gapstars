@@ -3,6 +3,8 @@ using Chinook.Areas.Identity;
 using Microsoft.AspNetCore.Components.Authorization;
 using Chinook.Models;
 using Chinook.Services.Playlist;
+using Chinook.Services.Albums;
+using Chinook.Services.Artists;
 
 namespace Chinook.Startup
 {
@@ -19,6 +21,8 @@ namespace Chinook.Startup
         public static void RegisterServices(IServiceCollection services)
         {
             services.AddScoped<IPlaylistService, PlaylistService>();
+            services.AddScoped<IAlbumService, AlbumService>();
+            services.AddScoped<IArtistService, ArtistService>();
         }
 
         public static void RegisterDatabaseInitializer(IServiceCollection services, IConfiguration config)

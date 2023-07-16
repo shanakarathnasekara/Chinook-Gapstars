@@ -8,6 +8,7 @@ namespace Chinook.Services.Playlist
     {
         Task<Track> AddTrackToFavorites(long trackId);
         Task<Track> RemoveTrackFromFavorites(long trackId);
+        Task<ClientModels.Playlist> RetrieveSpecificPlaylist(long playlistId, string currentUserId);
         Task<List<PlaylistTrack>> RetrieveTracksList(long artistId, string currentUserId);
         Task<List<Models.Playlist>> RetrieveUsersListofPlaylist(string currentUserId);
         Task AddNewPlaylist(PlaylistTrack selectedTrack, string newPlaylistName, string currentUserId);

@@ -2,9 +2,12 @@
 @attribute [Authorize]
 
 @using Chinook.Models
+@using Chinook.Services.Albums;
+@using Chinook.Services.Artists;
 @using Microsoft.EntityFrameworkCore
 
-@inject ChinookContext DbContext
+@inject IArtistService artistService; 
+@inject IAlbumService  albumService;
 
 <PageTitle>Index</PageTitle>
 
@@ -12,13 +15,11 @@
 
 @if (Artists == null)
 {
-    <h1>Artists</h1>
     <Loading />
 }
 else
 {
-    <h1>Artists</h1>
-    <input type="text" class="form-control w-25" @bind="@SearchText" @oninput="FilterArtists" placeholder="Search artist by name" />
+    <input type="text" class="form-control w-25" @bind="@SearchText" @oninput="FilterArtistsBasedonSearchText" placeholder="Search artist by name" />
     <table class="table table-striped table-hover table-sm">
         <thead>
             <tr>
@@ -39,18 +40,9 @@ else
 }
 
 @code {
-    private List<Artist> Artists;
-    [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
+    private List<Artist> Artists = new List<Artist>();
     private string SearchText = "";
     private List<Artist> FilteredArtists = new List<Artist>();
-
-    private void FilterArtists(ChangeEventArgs e)
-    {
-        SearchText = e.Value.ToString();
-        FilteredArtists = Artists.Where(artist =>
-            string.IsNullOrEmpty(SearchText) || artist.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
-        ).ToList();
-    }
 
     protected override async Task OnInitializedAsync() {
         await InvokeAsync(StateHasChanged);
@@ -59,14 +51,21 @@ else
     }
 
     public async Task<List<Artist>> GetArtists()
-    {   
-        var users = DbContext.Users.Include(a => a.UserPlaylists).ToList();
-
-        return DbContext.Artists.Include(art => art.Albums).ToList();
+    {
+        return await artistService.GetArtistsFromDb();
     }
 
-    public async Task<List<Album>> GetAlbumsForArtist(int artistId)
+    public async Task<List<Album>> GetAlbumsForArtist(long artistId)
     {
-        return DbContext.Albums.Where(a => a.ArtistId == artistId).ToList();
+        return await albumService.GetAlbumsFromDb(artistId);
+    }
+
+    // Filter artist list based on search text
+    private void FilterArtistsBasedonSearchText(ChangeEventArgs e)
+    {
+        SearchText = e.Value.ToString();
+        FilteredArtists = Artists.Where(artist =>
+            string.IsNullOrEmpty(SearchText) || artist.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
+        ).ToList();
     }
 }

@@ -6,7 +6,6 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims;
 
-@inject ChinookContext DbContext;
 @inject IPlaylistService playListService;
 
 <h1>Playlist <strong>@Playlist.Name</strong></h1>
@@ -33,7 +32,7 @@ else
         <thead>
             <tr>
                 <th>Track</th>
-                <th></th>
+                <th>Actions</th>
         </tr>
         </thead>
         <tbody>
@@ -43,7 +42,7 @@ else
                     <td>@track.ArtistName - @track.AlbumTitle - @track.TrackName</td>
                     <td>
                         <div class="d-flex">
-                            @if (Playlist.Name != "Favorite")
+                            @if (Playlist.Name != "Favorites")
                             {
                                 @if (track.IsFavorite)
                                 {
@@ -55,7 +54,7 @@ else
                                 }
 
                             }
-                            <a href="#" class="m-1" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId, Playlist.Name))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
+                            <a href="#" class="m-1 pl-3" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId, Playlist.Name))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
                         </div>
                     </td>
                 </tr>
@@ -66,37 +65,22 @@ else
 
 @code {
     [Parameter] public long PlaylistId { get; set; }
-    [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
 
     private Chinook.ClientModels.Playlist Playlist;
     private string CurrentUserId;
     private string InfoMessage;
-    private string currentUrl;
 
     protected override async Task OnInitializedAsync()
     {
         CurrentUserId = await GetUserId();
-
         await InvokeAsync(StateHasChanged);
-        var DbContext = await DbFactory.CreateDbContextAsync();
+        Playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, CurrentUserId);
+    }
 
-        Playlist = DbContext.Playlists
-            .Include(a => a.Tracks).ThenInclude(a => a.Album).ThenInclude(a => a.Artist)
-            .Where(p => p.PlaylistId == PlaylistId)
-            .Select(p => new ClientModels.Playlist()
-                {
-                    Name = p.Name,
-                    Tracks = p.Tracks.Select(t => new ClientModels.PlaylistTrack()
-                    {
-                        AlbumTitle = t.Album.Title,
-                        ArtistName = t.Album.Artist.Name,
-                        TrackId = t.TrackId,
-                        TrackName = t.Name,
-                        IsFavorite = t.Playlists.Where(p => p.UserPlaylists.Any(up => up.UserId == CurrentUserId && up.Playlist.Name == "Favorites")).Any()
-                    }).ToList()
-                })
-            .FirstOrDefault();
+    protected override async Task OnParametersSetAsync()
+    {
+        Playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, CurrentUserId);
     }
 
     private async Task<string> GetUserId()
@@ -109,19 +93,21 @@ else
     private async Task FavoriteTrack(long trackId)
     {
         var track = await playListService.AddTrackToFavorites(trackId);
-
+        Playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, CurrentUserId);
         InfoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
     }
 
     private async Task UnfavoriteTrack(long trackId)
     {
         var track = await playListService.RemoveTrackFromFavorites(trackId);
+        Playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, CurrentUserId);
         InfoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
     }
 
     private async void RemoveTrack(long trackId, string playlistName)
     {
         await playListService.RemoveTrackFromPlaylist(trackId, playlistName);
+        Playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, CurrentUserId);
         CloseInfoMessage();
     }
 

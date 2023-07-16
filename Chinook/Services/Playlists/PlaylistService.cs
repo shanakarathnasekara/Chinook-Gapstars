@@ -1,13 +1,13 @@
 ﻿using Chinook.ClientModels;
 using Chinook.Models;
 using Microsoft.EntityFrameworkCore;
-using NuGet.DependencyResolver;
 
 namespace Chinook.Services.Playlist
 {
     public class PlaylistService: IPlaylistService
     {
         private ChinookContext _dbContext;
+
         public PlaylistService(ChinookContext dbContext) 
         {
             this._dbContext = dbContext;
@@ -15,29 +15,65 @@ namespace Chinook.Services.Playlist
 
         public async Task<Track> AddTrackToFavorites(long trackId)
         {
-            var track = _dbContext.Tracks.FirstOrDefault(t => t.TrackId == trackId);
-            var trackData = await _dbContext.Tracks.Where(t => t.TrackId == trackId).Include(a => a.Playlists).FirstOrDefaultAsync();
-            var favoritePlaylist = await _dbContext.Playlists.Where(p => p.Name == "Favorites").FirstOrDefaultAsync();
-            trackData.Playlists.Add(favoritePlaylist);
-            _dbContext.Tracks.Update(trackData);
-            await _dbContext.SaveChangesAsync();
+            var favoritePlaylist = await _dbContext.Playlists.FirstOrDefaultAsync(p => p.Name == "Favorites");
+            if (favoritePlaylist == null)
+            {
+                return null;
+            }
 
-            return trackData;
+            var track = await _dbContext.Tracks.FirstOrDefaultAsync(t => t.TrackId == trackId);
+            if (track != null)
+            {
+                track.Playlists.Add(favoritePlaylist);
+                await _dbContext.SaveChangesAsync();
+            }
 
+            return track;
         }
 
         public async Task<Track> RemoveTrackFromFavorites(long trackId)
         {
-            var track = _dbContext.Tracks.FirstOrDefault(t => t.TrackId == trackId);
+            var favoritePlaylist = await _dbContext.Playlists.FirstOrDefaultAsync(p => p.Name == "Favorites");
+            if (favoritePlaylist == null)
+            {
+                // Handle the case when the "Favorites" playlist is not found
+                return null; // Or throw an exception, return a default value, etc.
+            }
 
-            var trackData = await _dbContext.Tracks.Where(t => t.TrackId == trackId).Include(a => a.Playlists).FirstOrDefaultAsync();
-            var favoritePlaylist = await _dbContext.Playlists.Where(p => p.Name == "Favorites").FirstOrDefaultAsync();
+            var track = await _dbContext.Tracks.Include(a => a.Playlists).FirstOrDefaultAsync(t => t.TrackId == trackId);
+            if (track != null)
+            {
+                track.Playlists.Remove(favoritePlaylist);
+                await _dbContext.SaveChangesAsync();
+            }
 
-            trackData.Playlists.Remove(favoritePlaylist);
-            _dbContext.Tracks.Update(trackData);
-            await _dbContext.SaveChangesAsync();
+            return track;
+        }
 
-            return trackData;
+        public async Task<ClientModels.Playlist> RetrieveSpecificPlaylist(long playlistId, string currentUserId)
+        {
+            var playlist = await _dbContext.Playlists
+                .Include(p => p.Tracks)
+                .ThenInclude(t => t.Album)
+                .ThenInclude(a => a.Artist)
+                .Where(p => p.PlaylistId == playlistId)
+                .Select(p => new ClientModels.Playlist
+                {
+                    Name = p.Name,
+                    Tracks = p.Tracks.Select(t => new ClientModels.PlaylistTrack
+                    {
+                        AlbumTitle = t.Album.Title,
+                        ArtistName = t.Album.Artist.Name,
+                        TrackId = t.TrackId,
+                        TrackName = t.Name,
+                        IsFavorite = t.Playlists
+                            .Any(pl => pl.UserPlaylists
+                            .Any(up => up.UserId == currentUserId && up.Playlist.Name == "Favorites"))
+                    }).ToList()
+                })
+                .FirstOrDefaultAsync();
+
+            return playlist;
         }
 
         public async Task<List<PlaylistTrack>> RetrieveTracksList(long artistId, string currentUserId)
@@ -99,6 +135,8 @@ namespace Chinook.Services.Playlist
             track.Playlists.Remove(playList);
             _dbContext.Tracks.Update(track);
             await _dbContext.SaveChangesAsync();
+
+            this.RemovePlaylist(23, "19bb6f74-d083-498f-a188-d1cd6e7979f0");
         }
 
         public async Task AddTrackToPlaylist(PlaylistTrack selectedTrack, string playlistName)
@@ -110,5 +148,37 @@ namespace Chinook.Services.Playlist
             await _dbContext.SaveChangesAsync();
         }
 
+        private async Task RemovePlaylist(long playlistId, string currentuserId)
+        {
+            var playlist = await _dbContext.Playlists.Where(p => p.PlaylistId == playlistId).FirstOrDefaultAsync();
+            _dbContext.Playlists.Remove(playlist);
+            await _dbContext.SaveChangesAsync();
+
+            var userPlaylist = await _dbContext.UserPlaylists.Where(p => p.PlaylistId == playlistId).FirstOrDefaultAsync();
+            _dbContext.UserPlaylists.Remove(userPlaylist);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        private async Task AddFavoritesPlaylist()
+        {
+            var favoritePlaylist = new Chinook.Models.Playlist()
+            {
+                PlaylistId = 19,
+                Name = "Favorites"
+            };
+            _dbContext.Playlists.Add(favoritePlaylist);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        private async Task AddUserToPlaylist(string currentUserId)
+        {
+            UserPlaylist userPlaylist = new UserPlaylist()
+            {
+                UserId = currentUserId,
+                PlaylistId = 15
+            };
+            _dbContext.UserPlaylists.Add(userPlaylist);
+            await _dbContext.SaveChangesAsync();
+        }
     }
 }

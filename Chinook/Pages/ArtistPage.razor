@@ -3,12 +3,13 @@
 
 @using Chinook.Models
 @using Chinook.ClientModels
+@using Chinook.Services.Artists;
 @using Chinook.Services.Playlist;
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims;
 
-@inject ChinookContext DbContext;
 @inject IPlaylistService playListService;
+@inject IArtistService artistService;
 
 @if (!string.IsNullOrWhiteSpace(InfoMessage))
 {
@@ -64,7 +65,6 @@ else
 @code {
     [Parameter] public long ArtistId { get; set; }
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
-    [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
     private Modal PlaylistDialog { get; set; }
 
     private Artist Artist;
@@ -77,12 +77,13 @@ else
 
     private List<Chinook.Models.Playlist> PlaylistData;
 
+
     protected override async Task OnInitializedAsync()
     {
         await InvokeAsync(StateHasChanged);
         CurrentUserId = await GetUserId();
 
-        Artist = DbContext.Artists.Include(a => a.Albums).SingleOrDefault(a => a.ArtistId == ArtistId);
+        Artist = (await artistService.GetArtistsFromDb()).SingleOrDefault(a => a.ArtistId == ArtistId);
 
         Tracks = await playListService.RetrieveTracksList(Artist.ArtistId, CurrentUserId);
 
@@ -102,9 +103,8 @@ else
 
         Tracks = await playListService.RetrieveTracksList(Artist.ArtistId, CurrentUserId);
 
-        RefreshComponent();
-
         InfoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
+
     }
 
     private async Task UnfavoriteTrack(long trackId)
@@ -113,9 +113,8 @@ else
 
         Tracks = await playListService.RetrieveTracksList(Artist.ArtistId, CurrentUserId);
 
-        RefreshComponent();
-
         InfoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
+
     }
 
     private void OpenPlaylistDialog(long trackId)
@@ -150,33 +149,6 @@ else
     private void CloseInfoMessage()
     {
         InfoMessage = "";
-    }
-
-    private async Task AddFavoritesPlaylist()
-    {
-        var favoritePlaylist = new Chinook.Models.Playlist()
-            {
-                PlaylistId = 19,
-                Name = "Favorites"
-            };
-        DbContext.Playlists.Add(favoritePlaylist);
-        await DbContext.SaveChangesAsync();
-    }
-
-    private async Task AddUserToPlaylist()
-    {
-        UserPlaylist userPlaylist = new UserPlaylist()
-            {
-                UserId = CurrentUserId,
-                PlaylistId = 15
-            };
-        DbContext.UserPlaylists.Add(userPlaylist);
-        await DbContext.SaveChangesAsync();
-    }
-
-    protected void RefreshComponent()
-    {
-        StateHasChanged();
     }
 
 

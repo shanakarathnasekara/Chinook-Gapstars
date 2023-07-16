@@ -41,8 +41,6 @@
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
     private string CurrentUserId;
 
-
-
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
     public List<Models.Playlist> UserPlaylistData;
@@ -53,6 +51,7 @@
         CurrentUserId = await GetUserId();
         UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(CurrentUserId);
     }
+
 
     private async Task<string> GetUserId()
     {
