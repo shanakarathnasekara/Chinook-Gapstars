@@ -1,12 +1,14 @@
 ﻿@page "/playlist/{PlaylistId:long}"
 @attribute [Authorize]
 
+@using Chinook.Common.Models;
 @using Chinook.Models
 @using Chinook.Services.Playlist;
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims;
 
 @inject IPlaylistService playListService;
+@inject ILogger<PlaylistPage> logger;
 
 <h1>Playlist <strong>@_playlist.Name</strong></h1>
 
@@ -18,6 +20,18 @@
                 @_infoMessage
             </div>
             <button type="button" class="btn-close" aria-label="Close" @onclick="CloseInfoMessage"></button>
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="alert alert-danger fade show">
+        <div class="d-flex align-items-start">
+            <div class="flex-grow-1">
+                @_errorMessage
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseErrorMessage"></button>
         </div>
     </div>
 }
@@ -79,50 +93,138 @@ else
     private ClientModels.Playlist _playlist;
     private string _currentUserId;
     private string _infoMessage;
+    private string _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        _currentUserId = await GetUserId();
-        await InvokeAsync(StateHasChanged);
-        _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
+        try
+        {
+            _currentUserId = await GetUserId();
+            await InvokeAsync(StateHasChanged);
+            _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
+
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }        
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
+        try
+        {
+            _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }
     }
 
     private async Task<string> GetUserId()
     {
-        var user = (await authenticationState).User;
-        var userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+        string userId = "";
+        try
+        {
+            var user = (await authenticationState).User;
+            userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }        
         return userId;
     }
 
     private async Task FavoriteTrack(long trackId)
     {
-        var track = await playListService.AddTrackToFavorites(trackId, _currentUserId);
-        _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
-        _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
+        try
+        {
+            var track = await playListService.AddTrackToFavorites(trackId, _currentUserId);
+            _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
+            _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }        
     }
 
     private async Task UnfavoriteTrack(long trackId)
     {
-        var track = await playListService.RemoveTrackFromFavorites(trackId, _currentUserId);
-        _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
-        _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
+        try
+        {
+            var track = await playListService.RemoveTrackFromFavorites(trackId, _currentUserId);
+            _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
+            _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }        
     }
 
     private async void RemoveTrack(long trackId, string playlistName)
     {
-        await playListService.RemoveTrackFromPlaylist(trackId, playlistName, _currentUserId);
-        _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
-        CloseInfoMessage();
+        try
+        {
+            await playListService.RemoveTrackFromPlaylist(trackId, playlistName, _currentUserId);
+            _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
+            CloseInfoMessage();
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }        
     }
 
     private void CloseInfoMessage()
     {
         _infoMessage = "";
+    }
+
+    private async Task DisplayErrorMessage(string errorMsg)
+    {
+        _errorMessage = $"{errorMsg}";
+        await Task.Delay(3000);
+        _errorMessage = "";
+        StateHasChanged();
+    }
+
+    private void CloseErrorMessage()
+    {
+        _errorMessage = "";
     }
 
 }

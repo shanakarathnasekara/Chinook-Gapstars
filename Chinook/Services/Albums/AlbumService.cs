@@ -1,4 +1,5 @@
-﻿using Chinook.Models;
+﻿using Chinook.Common.Models;
+using Chinook.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Chinook.Services.Albums
@@ -12,9 +13,17 @@ namespace Chinook.Services.Albums
             _dbContext = dbContext;
         }
 
+        // Retrieve album data from database
         public async Task<List<Album>> GetAlbumsFromDb(long artistId)
         {
-            return await _dbContext.Albums.Where(album => album.ArtistId == artistId).ToListAsync();
+            List<Album> albumData =  await _dbContext.Albums.Where(album => album.ArtistId == artistId).ToListAsync();
+
+            throw new CustomException
+            {
+                CustomMessage = "Error occurred when retrieving albums data from Db"
+            };
+
+            return albumData;
         }
     }
 }

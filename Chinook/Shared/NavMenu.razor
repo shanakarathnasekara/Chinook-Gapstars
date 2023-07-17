@@ -1,9 +1,11 @@
-﻿@using Chinook.Services.Playlist;
+﻿@using Chinook.Common.Models;
+@using Chinook.Services.Playlist;
 @using System.Security.Claims;
 @using Chinook.Services;
 @using Chinook.Services.EventsStreaming;
 @inject IPlaylistService playlistService;
 @inject EventsService eventsService;
+@inject ILogger<NavMenu> logger;
 
 
 <div class="top-row ps-3 navbar navbar-dark">
@@ -50,15 +52,26 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await InvokeAsync(StateHasChanged);
-        currentUserId = await GetUserId();
-        UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(currentUserId);
-        if (currentUserId != null)
+        try
         {
-            await playlistService.InitiatingFavoritePlaylist(currentUserId);
+            await InvokeAsync(StateHasChanged);
+            currentUserId = await GetUserId();
+            UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(currentUserId);
+            if (currentUserId != null)
+            {
+                await playlistService.InitiatingFavoritePlaylist(currentUserId);
+            }
+            FavoritePlaylistId = await playlistService.RetrieveUsersFavoritePlaylistId(currentUserId);
+            eventsService.PlaylistItemAdded += HandleEventChanged;
         }
-        FavoritePlaylistId = await playlistService.RetrieveUsersFavoritePlaylistId(currentUserId);
-        eventsService.PlaylistItemAdded += HandleEventChanged;
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }        
     }
 
     private void HandleEventChanged()
@@ -78,8 +91,21 @@
 
     private async Task<string> GetUserId()
     {
-        var user = (await authenticationState).User;
-        var userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+        string userId = "";
+        try
+        {
+            var user = (await authenticationState).User;
+            userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }
+
         return userId;
     }
 

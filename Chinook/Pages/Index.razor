@@ -1,17 +1,33 @@
 ﻿@page "/"
 @attribute [Authorize]
 
+@using Chinook.Common.Models;
 @using Chinook.Models
 @using Chinook.Services.Albums;
 @using Chinook.Services.Artists;
-@using Microsoft.EntityFrameworkCore
+@using Microsoft.EntityFrameworkCore;
+@using Microsoft.Extensions.Logging;
 
 @inject IArtistService artistService; 
 @inject IAlbumService  albumService;
+@inject ILogger<Index> logger;
+
 
 <PageTitle>Index</PageTitle>
 
 <h1>Artists</h1>
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <div class="alert alert-danger fade show">
+        <div class="d-flex align-items-start">
+            <div class="flex-grow-1">
+                @_errorMessage
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseErrorMessage"></button>
+        </div>
+    </div>
+}
 
 @if (_artists == null)
 {
@@ -52,29 +68,68 @@ else
     private List<Artist> _artists = new List<Artist>();
     private string _searchText = "";
     private List<Artist> _filteredArtists = new List<Artist>();
+    private string _errorMessage;
 
     protected override async Task OnInitializedAsync() {
-        await InvokeAsync(StateHasChanged);
-        _artists = await GetArtists();
-        _filteredArtists = _artists;
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            _artists = await GetArtists();
+            _filteredArtists = _artists;
+            logger.LogInformation("Index page intitialized");
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }
     }
 
+    //Retrieve artists from DB
     public async Task<List<Artist>> GetArtists()
     {
-        return await artistService.GetArtistsFromDb();
-    }
+        var artists = new List<Artist>();
+        try
+        {
+            artists = await artistService.GetArtistsFromDb();
 
-    public async Task<List<Album>> GetAlbumsForArtist(long artistId)
-    {
-        return await albumService.GetAlbumsFromDb(artistId);
+        } 
+        catch(CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }
+        return artists;
     }
 
     // Filter artist list based on search text
     private void FilterArtistsBasedonSearchText(ChangeEventArgs e)
     {
         _searchText = e.Value.ToString();
+        logger.LogInformation($"Triggering artist filter for search text: {_searchText}");
         _filteredArtists = _artists.Where(artist =>
             string.IsNullOrEmpty(_searchText) || artist.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
         ).ToList();
+    }
+
+    private async Task DisplayErrorMessage(string errorMsg)
+    {
+        _errorMessage = $"{errorMsg}";
+        await Task.Delay(3000);
+        _errorMessage = "";
+        StateHasChanged();
+    }
+
+    private void CloseErrorMessage()
+    {
+        _errorMessage = "";
     }
 }

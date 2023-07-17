@@ -1,5 +1,6 @@
 ﻿@page "/artist/{ArtistId:long}"
 @using Chinook.ClientModels;
+@using Chinook.Common.Models;
 @using Chinook.Models;
 @using Chinook.Services.Artists;
 @using Chinook.Services.EventsStreaming;
@@ -10,6 +11,7 @@
 @inject IPlaylistService playListService;
 @inject IArtistService artistService;
 @inject EventsService eventsService;
+@inject ILogger<ArtistPage> logger;
 
 @if (!string.IsNullOrWhiteSpace(_infoMessage))
 {
@@ -91,40 +93,86 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        await InvokeAsync(StateHasChanged);
-        _currentUserId = await GetUserId();
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            _currentUserId = await GetUserId();
 
-        // Load initial data
-        Artist = (await artistService.GetArtistsFromDb()).SingleOrDefault(a => a.ArtistId == ArtistId);
-        Tracks = await playListService.RetrieveTracksList(Artist.ArtistId, _currentUserId);
-        PlaylistData = await playListService.RetrieveUsersListofPlaylist(_currentUserId);
+            // Load initial data
+            Artist = (await artistService.GetArtistsFromDb()).SingleOrDefault(a => a.ArtistId == ArtistId);
+            Tracks = await playListService.RetrieveTracksList(Artist.ArtistId, _currentUserId);
+            PlaylistData = await playListService.RetrieveUsersListofPlaylist(_currentUserId);
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }
+
     }
 
     private async Task<string> GetUserId()
     {
-        var user = (await authenticationState).User;
-        var userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
-        return userId;
+        string userId = "";
+        try
+        {
+            var user = (await authenticationState).User;
+            userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }
+
+        return userId;        
     }
 
     private async Task FavoriteTrack(long trackId)
     {
-        Track track = await playListService.AddTrackToFavorites(trackId, _currentUserId);
-
-        Tracks = await playListService.RetrieveTracksList(Artist.ArtistId, _currentUserId);
-
-        _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
+        try
+        {
+            Track track = await playListService.AddTrackToFavorites(trackId, _currentUserId);
+            Tracks = await playListService.RetrieveTracksList(Artist.ArtistId, _currentUserId);
+            _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }        
 
     }
 
     private async Task UnfavoriteTrack(long trackId)
     {
-        Track track = await playListService.RemoveTrackFromFavorites(trackId, _currentUserId);
-
-        Tracks = await playListService.RetrieveTracksList(Artist.ArtistId, _currentUserId);
-
-        _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
-
+        try
+        {
+            Track track = await playListService.RemoveTrackFromFavorites(trackId, _currentUserId);
+            Tracks = await playListService.RetrieveTracksList(Artist.ArtistId, _currentUserId);
+            _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }
     }
 
     private void OpenPlaylistDialog(long trackId)
@@ -137,36 +185,50 @@ else
 
     private async void AddTrackToPlaylist()
     {
-        if (NewPlaylist == "")
+        try
         {
-            if (DropDownSelection == "" && PlaylistData.Count() == 0)
+            if (NewPlaylist == "")
             {
-                _errorMessage = "Playlist name cannot be empty. Add a valid new playlistname.";
-                _playlistDialog.Close();
-                return;
+                if (DropDownSelection == "" && PlaylistData.Count() == 0)
+                {
+                    DisplayErrorMessage("Playlist name cannot be empty. Add a valid new playlistname.");
+                    _playlistDialog.Close();
+                    return;
+                }
+
+                if (DropDownSelection == "" && PlaylistData.Count() != 0)
+                {
+                    DropDownSelection = PlaylistData.FirstOrDefault().Name;
+                }
+
+                await playListService.AddTrackToPlaylist(_selectedTrack, DropDownSelection, _currentUserId);
+            }
+            else
+            {
+                await playListService.AddNewPlaylist(_selectedTrack, NewPlaylist, _currentUserId);
+                PlaylistData = await playListService.RetrieveUsersListofPlaylist(_currentUserId);
+                eventsService.UpdatePlaylistItemAddedEvent();
             }
 
-            if (DropDownSelection == "" && PlaylistData.Count() != 0)
-            {
-                DropDownSelection = PlaylistData.FirstOrDefault().Name;
-            }
+            string playListName = NewPlaylist != "" ? NewPlaylist : DropDownSelection;
 
-            await playListService.AddTrackToPlaylist(_selectedTrack, DropDownSelection, _currentUserId);
-        } 
-        else
-        {
-            await playListService.AddNewPlaylist(_selectedTrack, NewPlaylist, _currentUserId);
-            PlaylistData = await playListService.RetrieveUsersListofPlaylist(_currentUserId);
-            eventsService.UpdatePlaylistItemAddedEvent();
+            CloseInfoMessage();
+            CloseErrorMessage();
+
+            _infoMessage = $"Track {Artist.Name} - {_selectedTrack.AlbumTitle} - {_selectedTrack.TrackName} added to playlist {playListName}.";
+            _playlistDialog.Close();
         }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+            DisplayErrorMessage(ex.CustomMessage);
+            _playlistDialog.Close();
 
-        string playListName = NewPlaylist != "" ? NewPlaylist : DropDownSelection;
-
-        CloseInfoMessage();
-        CloseErrorMessage();
-
-        _infoMessage = $"Track {Artist.Name} - {_selectedTrack.AlbumTitle} - {_selectedTrack.TrackName} added to playlist {playListName}.";
-        _playlistDialog.Close();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }        
     }
 
     public async void AddTrackToPlaylistDropdown(string playlistName)
@@ -182,6 +244,14 @@ else
     private void CloseErrorMessage()
     {
         _errorMessage = "";
+    }
+
+    private async Task DisplayErrorMessage(string errorMsg)
+    {
+        _errorMessage = $"{errorMsg}";
+        await Task.Delay(4000);
+        _errorMessage = "";
+        StateHasChanged();
     }
 }
 
