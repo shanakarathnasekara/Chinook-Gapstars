@@ -36,28 +36,37 @@ else
         </tr>
         </thead>
         <tbody>
-            @foreach (var track in _playlist.Tracks)
+            @if (_playlist.Tracks == null || _playlist.Tracks.Count == 0)
             {
                 <tr>
-                    <td>@track.ArtistName - @track.AlbumTitle - @track.TrackName</td>
-                    <td>
-                        <div class="d-flex">
-                            @if (_playlist.Name != "Favorites")
-                            {
-                                @if (track.IsFavorite)
-                                {
-                                    <a href="#" class="m-1" title="Unark as favorite" @onclick="@(() => UnfavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star-fill"></i></a>
-                                }
-                                else
-                                {
-                                    <a href="#" class="m-1" title="Mark as favorite" @onclick="@(() => FavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star"></i></a>
-                                }
-
-                            }
-                            <a href="#" class="m-1 pl-3" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId, _playlist.Name))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
-                        </div>
-                    </td>
+                    <td colspan="2">No tracks found</td>
                 </tr>
+            }
+            else
+            {
+                @foreach (var track in _playlist.Tracks)
+                {
+                    <tr>
+                        <td>@track.ArtistName - @track.AlbumTitle - @track.TrackName</td>
+                        <td>
+                            <div class="d-flex">
+                                @if (_playlist.Name != "Favorites")
+                                {
+                                    @if (track.IsFavorite)
+                                    {
+                                        <a href="#" class="m-1" title="Unark as favorite" @onclick="@(() => UnfavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star-fill"></i></a>
+                                    }
+                                    else
+                                    {
+                                        <a href="#" class="m-1" title="Mark as favorite" @onclick="@(() => FavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star"></i></a>
+                                    }
+
+                                }
+                                <a href="#" class="m-1 pl-3" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId, _playlist.Name))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
+                            </div>
+                        </td>
+                    </tr>
+                }
             }
         </tbody>
     </table>
@@ -92,21 +101,21 @@ else
 
     private async Task FavoriteTrack(long trackId)
     {
-        var track = await playListService.AddTrackToFavorites(trackId);
+        var track = await playListService.AddTrackToFavorites(trackId, _currentUserId);
         _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
         _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
     }
 
     private async Task UnfavoriteTrack(long trackId)
     {
-        var track = await playListService.RemoveTrackFromFavorites(trackId);
+        var track = await playListService.RemoveTrackFromFavorites(trackId, _currentUserId);
         _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
         _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
     }
 
     private async void RemoveTrack(long trackId, string playlistName)
     {
-        await playListService.RemoveTrackFromPlaylist(trackId, playlistName);
+        await playListService.RemoveTrackFromPlaylist(trackId, playlistName, _currentUserId);
         _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
         CloseInfoMessage();
     }

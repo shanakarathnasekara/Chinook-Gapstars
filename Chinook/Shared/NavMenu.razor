@@ -22,11 +22,11 @@
                 <span class="oi oi-home" aria-hidden="true"></span>Home
             </NavLink>
         </div>
-        <div class="nav-item px-3"> 
-            <NavLink class="nav-link" href="playlist/19">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href=@($"playlist/{FavoritePlaylistId}")>
                 <i class="bi bi-music-note-list me-3" style="font-size: 1.25em"></i>My favorite tracks
             </NavLink>
-        </div>
+        </div>        
         <div class="nav-item px-3">
             @foreach(var userPlaylist in UserPlaylistData)
             {
@@ -44,16 +44,20 @@
     private bool collapseNavMenu = true;
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
     private string currentUserId;
-
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
     public List<Models.Playlist> UserPlaylistData;
+    public long FavoritePlaylistId = 0;
 
     protected override async Task OnInitializedAsync()
     {
         await InvokeAsync(StateHasChanged);
         currentUserId = await GetUserId();
         UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(currentUserId);
+        if (currentUserId != null)
+        {
+            await playlistService.InitiatingFavoritePlaylist(currentUserId);
+        }
+        FavoritePlaylistId = await playlistService.RetrieveUsersFavoritePlaylistId(currentUserId);
         eventsService.PlaylistItemAdded += HandleEventChanged;
     }
 
@@ -61,7 +65,7 @@
     {
        Task.Run(async () =>
          {
-              UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(currentUserId);
+             UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(currentUserId);
              await InvokeAsync(StateHasChanged);
          });
     }
