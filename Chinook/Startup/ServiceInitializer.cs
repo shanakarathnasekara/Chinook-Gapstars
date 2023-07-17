@@ -45,9 +45,5 @@ namespace Chinook.Startup
             services.AddServerSideBlazor();
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ChinookUser>>();
         }
-        
-        
-
-
     }
 }

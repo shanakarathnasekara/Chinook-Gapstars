@@ -156,6 +156,7 @@ else
         else
         {
             await playListService.AddNewPlaylist(_selectedTrack, NewPlaylist, _currentUserId);
+            PlaylistData = await playListService.RetrieveUsersListofPlaylist(_currentUserId);
             eventsService.UpdatePlaylistItemAddedEvent();
         }
 
