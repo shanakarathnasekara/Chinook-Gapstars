@@ -4,6 +4,6 @@ namespace Chinook.Services.Artists
 {
     public interface IArtistService
     {
-        Task<List<Artist>> GetArtistsFromDb();
+        Task<List<ClientModels.Artist>> GetArtistsFromDb();
     }
 }

@@ -11,10 +11,11 @@ namespace Chinook.Services.Playlist
         Task<Track> RemoveTrackFromFavorites(long trackId, string currentUserId);
         Task<ClientModels.Playlist> RetrieveSpecificPlaylist(long playlistId, string currentUserId);
         Task<List<PlaylistTrack>> RetrieveTracksList(long artistId, string currentUserId);
-        Task<List<Models.Playlist>> RetrieveUsersListofPlaylist(string currentUserId);
+        Task<List<ClientModels.Playlist>> RetrieveUsersListofPlaylist(string currentUserId);
         Task AddNewPlaylist(PlaylistTrack selectedTrack, string newPlaylistName, string currentUserId);
         Task RemoveTrackFromPlaylist(long trackId, string playlistName, string currentUserId);
         Task AddTrackToPlaylist(PlaylistTrack selectedTrack, string newPlaylistName, string currentUserId);
         Task<long> RetrieveUsersFavoritePlaylistId(string currentUserId);
+        Task<List<PlaylistNavitem>> RetrieveUsersListPlaylistNavitems(string currentUserId);
     }
 }

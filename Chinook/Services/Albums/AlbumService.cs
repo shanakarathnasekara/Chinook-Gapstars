@@ -17,11 +17,14 @@ namespace Chinook.Services.Albums
         public async Task<List<Album>> GetAlbumsFromDb(long artistId)
         {
             List<Album> albumData =  await _dbContext.Albums.Where(album => album.ArtistId == artistId).ToListAsync();
-
-            throw new CustomException
+            
+            if (albumData == null)
             {
-                CustomMessage = "Error occurred when retrieving albums data from Db"
-            };
+                throw new CustomException
+                {
+                    CustomMessage = "Error occurred when retrieving albums data from Db"
+                };
+            }            
 
             return albumData;
         }

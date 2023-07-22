@@ -17,6 +17,7 @@
 
 <h1>Artists</h1>
 
+@*Error message alert box*@
 @if (!string.IsNullOrWhiteSpace(_errorMessage))
 {
     <div class="alert alert-danger fade show">
@@ -29,7 +30,7 @@
     </div>
 }
 
-@if (_artists == null)
+@if (_artistsData == null)
 {
     <Loading />
 }
@@ -44,7 +45,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @if (_filteredArtists == null || _filteredArtists.Count == 0)
+            @if (_filteredArtistsData == null || _filteredArtistsData.Count == 0)
             {
                 <tr>
                     <td colspan="2">No artists found</td>
@@ -52,11 +53,11 @@ else
             }
             else
             {
-                @foreach (var artist in _filteredArtists)
+                @foreach (var artist in _filteredArtistsData)
                 {
                     <tr>
-                        <td><a href="Artist/@artist.ArtistId">@artist.Name</a></td>
-                        <td>@artist.Albums.Count()</td>
+                        <td><a href="Artist/@artist.ArtistId">@artist.ArtistName</a></td>
+                        <td>@artist.Albums?.Count()</td>
                     </tr>
                 }
             }
@@ -65,23 +66,23 @@ else
 }
 
 @code {
-    private List<Artist> _artists = new List<Artist>();
+    private List<ClientModels.Artist> _artistsData = new List<ClientModels.Artist>();
+    private List<ClientModels.Artist> _filteredArtistsData = new List<ClientModels.Artist>();
     private string _searchText = "";
-    private List<Artist> _filteredArtists = new List<Artist>();
-    private string _errorMessage;
+    private string _errorMessage = "";
 
     protected override async Task OnInitializedAsync() {
         try
         {
             await InvokeAsync(StateHasChanged);
-            _artists = await GetArtists();
-            _filteredArtists = _artists;
+            _artistsData = await GetArtists();
+            _filteredArtistsData = _artistsData;
             logger.LogInformation("Index page intitialized");
         }
         catch (CustomException ex)
         {
             logger.LogError(ex.CustomMessage);
-            DisplayErrorMessage(ex.CustomMessage);
+            await DisplayErrorMessage(ex.CustomMessage);
         }
         catch (Exception ex)
         {
@@ -90,18 +91,17 @@ else
     }
 
     //Retrieve artists from DB
-    public async Task<List<Artist>> GetArtists()
+    public async Task<List<ClientModels.Artist>> GetArtists()
     {
-        var artists = new List<Artist>();
+        var artists = new List<ClientModels.Artist>();
         try
         {
             artists = await artistService.GetArtistsFromDb();
-
         } 
         catch(CustomException ex)
         {
             logger.LogError(ex.CustomMessage);
-            DisplayErrorMessage(ex.CustomMessage);
+            await DisplayErrorMessage(ex.CustomMessage);
         }
         catch (Exception ex)
         {
@@ -115,8 +115,8 @@ else
     {
         _searchText = e.Value.ToString();
         logger.LogInformation($"Triggering artist filter for search text: {_searchText}");
-        _filteredArtists = _artists.Where(artist =>
-            string.IsNullOrEmpty(_searchText) || artist.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
+        _filteredArtistsData = _artistsData.Where(artist =>
+            string.IsNullOrEmpty(_searchText) || artist.ArtistName.Contains(_searchText, StringComparison.OrdinalIgnoreCase)
         ).ToList();
     }
 

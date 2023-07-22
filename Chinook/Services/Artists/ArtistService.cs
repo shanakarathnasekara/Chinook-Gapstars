@@ -15,9 +15,22 @@ namespace Chinook.Services.Artists
         }
 
         // Retrieve artists data from database
-        public async Task<List<Artist>> GetArtistsFromDb()
+        public async Task<List<ClientModels.Artist>> GetArtistsFromDb()
         {
-            List<Artist> artistData = await _dbContext.Artists.Include(artist => artist.Albums).ToListAsync();
+            List<ClientModels.Artist> artistData = await _dbContext.Artists
+                .Include(artist => artist.Albums)
+                .Select(a => new ClientModels.Artist()
+                {
+                    ArtistId = a.ArtistId,
+                    ArtistName = a.Name,
+                    Albums = a.Albums.Select (alb => new ClientModels.Album
+                    {
+                        AlbumId = alb.AlbumId,
+                        ArtistId  = alb.ArtistId,
+                        Title = alb.Title
+                    }).ToList()
+                })
+                .ToListAsync();
             
             if (artistData == null)
             {

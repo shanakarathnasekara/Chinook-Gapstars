@@ -30,7 +30,7 @@
             </NavLink>
         </div>        
         <div class="nav-item px-3">
-            @foreach(var userPlaylist in UserPlaylistData)
+            @foreach (var userPlaylist in _userPlaylistData)
             {
                 <NavLink class="nav-link" href=@($"playlist/{userPlaylist.PlaylistId}")>
                     <i class="bi bi-music-note-beamed me-3" style="font-size: 1.25em"></i>
@@ -47,7 +47,7 @@
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
     private string currentUserId;
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-    public List<Models.Playlist> UserPlaylistData;
+    public List<ClientModels.PlaylistNavitem> _userPlaylistData;
     public long FavoritePlaylistId = 0;
 
     protected override async Task OnInitializedAsync()
@@ -56,7 +56,7 @@
         {
             await InvokeAsync(StateHasChanged);
             currentUserId = await GetUserId();
-            UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(currentUserId);
+            _userPlaylistData = await playlistService.RetrieveUsersListPlaylistNavitems(currentUserId);
             if (currentUserId != null)
             {
                 await playlistService.InitiatingFavoritePlaylist(currentUserId);
@@ -78,7 +78,7 @@
     {
        Task.Run(async () =>
          {
-             UserPlaylistData = await playlistService.RetrieveUsersListofPlaylist(currentUserId);
+              _userPlaylistData = await playlistService.RetrieveUsersListPlaylistNavitems(currentUserId);
              await InvokeAsync(StateHasChanged);
          });
     }

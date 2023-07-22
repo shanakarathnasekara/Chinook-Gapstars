@@ -19,7 +19,7 @@ namespace Chinook.Services.Playlist
 
         #region Public methods
 
-        // This method is to by default create a favorite playlist
+        // Method to create a favourite playlist by default
         public async Task InitiatingFavoritePlaylist(string currentUserId)
         {
             var userWithFavoritePlaylist = await _dbContext.UserPlaylists.Include(u => u.Playlist).FirstOrDefaultAsync(p => p.UserId == currentUserId && p.Playlist.Name == "Favorites");
@@ -34,7 +34,10 @@ namespace Chinook.Services.Playlist
         public async Task<Track> AddTrackToFavorites(long trackId, string currentUserId)
         {
             var favoritePlaylist = await _dbContext.Playlists.Include(p => p.UserPlaylists).FirstOrDefaultAsync(p => p.Name == "Favorites" && p.UserPlaylists.Any(u => u.UserId == currentUserId));
-            var track = await _dbContext.Tracks.Include(t => t.Playlists).FirstOrDefaultAsync(t => t.TrackId == trackId);
+            var track = await _dbContext.Tracks
+                .Include(t => t.Playlists)
+                .Include(t => t.Album).ThenInclude(a => a.Artist)
+                .FirstOrDefaultAsync(t => t.TrackId == trackId);
 
             if (track == null || favoritePlaylist == null)
             {
@@ -53,7 +56,7 @@ namespace Chinook.Services.Playlist
             return track;
         }
 
-        // Removing tracks from favorite playlist
+        // Remove tracks from favorite playlist
         public async Task<Track> RemoveTrackFromFavorites(long trackId, string currentUserId)
         {
             var favoritePlaylist = await _dbContext.Playlists.Include(p => p.UserPlaylists).FirstOrDefaultAsync(p => p.Name == "Favorites" && p.UserPlaylists.Any(u => u.UserId == currentUserId));
@@ -86,7 +89,7 @@ namespace Chinook.Services.Playlist
             .Select(p => new ClientModels.Playlist()
             {
                 Name = p.Name,
-                Tracks = p.Tracks.Select(t => new ClientModels.PlaylistTrack()
+                Tracks = p.Tracks.Select(t => new PlaylistTrack()
                 {
                     AlbumTitle = t.Album.Title,
                     ArtistName = t.Album.Artist.Name,
@@ -135,9 +138,31 @@ namespace Chinook.Services.Playlist
         }
 
         // Retrieve user specific list of playlists
-        public async Task<List<Models.Playlist>> RetrieveUsersListofPlaylist(string currentUserId)
+        public async Task<List<ClientModels.Playlist>> RetrieveUsersListofPlaylist(string currentUserId)
         {
-            var userPlaylists = await _dbContext.Playlists.Include(p => p.UserPlaylists).Where(p => p.UserPlaylists.Any(up => up.UserId == currentUserId && up.Playlist.Name != "Favorites")).ToListAsync();
+            var userPlaylists = await _dbContext.Playlists
+                .Include(p => p.UserPlaylists)
+                .Where(p => p.UserPlaylists.Any(up => up.UserId == currentUserId && up.Playlist.Name != "Favorites"))
+                .Select(p => new ClientModels.Playlist()
+                {
+                    Name = p.Name                    
+                })
+                .ToListAsync();
+            return userPlaylists;
+        }
+
+        // Retrieve user specific playlist navigation items list
+        public async Task<List<PlaylistNavitem>> RetrieveUsersListPlaylistNavitems(string currentUserId)
+        {
+            var userPlaylists = await _dbContext.Playlists
+                .Include(p => p.UserPlaylists)
+                .Where(p => p.UserPlaylists.Any(up => up.UserId == currentUserId && up.Playlist.Name != "Favorites"))
+                .Select(p => new PlaylistNavitem()
+                {
+                    Name = p.Name,
+                    PlaylistId = p.PlaylistId
+                })
+                .ToListAsync();
             return userPlaylists;
         }
 
@@ -225,7 +250,7 @@ namespace Chinook.Services.Playlist
         private async Task AddUserToPlaylist(long playlistId, string currentUserId)
         {
 
-            Models.UserPlaylist favorites = new Models.UserPlaylist()
+            Models.UserPlaylist favorites = new UserPlaylist()
             {
                 UserId = currentUserId,
                 PlaylistId = playlistId
