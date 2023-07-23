@@ -1,0 +1,41 @@
+﻿@if (!string.IsNullOrWhiteSpace(infoMessage))
+{
+    <div class="alert alert-info fade show">
+        <div class="d-flex align-items-start">
+            <div class="flex-grow-1">
+                @infoMessage
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseInfoMessage"></button>
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger fade show">
+        <div class="d-flex align-items-start">
+            <div class="flex-grow-1">
+                @errorMessage
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseErrorMessage"></button>
+        </div>
+    </div>
+}
+
+
+
+
+@code {
+    [Parameter] public string infoMessage { get; set; } = "";
+    [Parameter] public string errorMessage { get; set; } = "";
+
+    private void CloseInfoMessage()
+    {
+        infoMessage = "";
+    }
+
+    private void CloseErrorMessage()
+    {
+        errorMessage = "";
+    }
+}

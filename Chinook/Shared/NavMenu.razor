@@ -1,9 +1,20 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using Chinook.Services.Playlist;
+@using System.Security.Claims;
+@using Chinook.Services;
+@using Chinook.Services.EventsStreaming;
+@using Chinook.Services.Users;
+@inject IPlaylistService playlistService;
+@inject EventsService eventsService;
+@inject IUserService userService;
+@inject ILogger<NavMenu> logger;
+
+
+<div class="top-row ps-3 navbar navbar-dark">    
     <div class="container-fluid">
         <a class="navbar-brand" href="">Chinook</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
-        </button>
+        </button>        
     </div>
 </div>
 
@@ -15,23 +26,84 @@
             </NavLink>
         </div>
         <div class="nav-item px-3">
-@* 
-            <NavLink class="nav-link" href="playlist/playlistnumber">
+            <NavLink class="nav-link" href=@($"playlist/{FavoritePlaylistId}")>
                 <i class="bi bi-music-note-list me-3" style="font-size: 1.25em"></i>My favorite tracks
             </NavLink>
-*@
-</div>
+        </div>        
+        <div class="nav-item px-3">
+            @foreach (var userPlaylist in _userPlaylistData)
+            {
+                <NavLink class="nav-link" href=@($"playlist/{userPlaylist.PlaylistId}")>
+                    <i class="bi bi-music-note-beamed me-3" style="font-size: 1.25em"></i>
+                    <span class="playlist-name">@TruncateText(userPlaylist.Name, 20)</span>
+                </NavLink>
+            }
+        </div>
 
     </nav>
 </div>
 
 @code {
     private bool collapseNavMenu = true;
-
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
+    private string _currentUserId;
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    public List<ClientModels.PlaylistNavitem> _userPlaylistData;
+    public long FavoritePlaylistId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            ClaimsPrincipal user = (await authenticationState).User;
+            _currentUserId = userService.GetUserId(user);
+            _userPlaylistData = await playlistService.RetrieveUsersListPlaylistNavitems(_currentUserId);
+            if (_currentUserId != null)
+            {
+                await playlistService.InitiatingFavoritePlaylist(_currentUserId);
+            }
+            FavoritePlaylistId = await playlistService.RetrieveUsersFavoritePlaylistId(_currentUserId);
+            eventsService.PlaylistItemAdded += HandleEventChanged;
+        }
+        catch (CustomException ex)
+        {
+            logger.LogError(ex.CustomMessage);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.Message?.ToString());
+        }        
+    }
+
+    private void HandleEventChanged()
+    {
+       Task.Run(async () =>
+         {
+              _userPlaylistData = await playlistService.RetrieveUsersListPlaylistNavitems(_currentUserId);
+             await InvokeAsync(StateHasChanged);
+         });
+    }
+
+    protected void Dispose()
+    {
+        eventsService.PlaylistItemAdded -= HandleEventChanged;
+    }
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (text.Length > maxLength)
+        {
+            return text.Substring(0, maxLength) + "...";
+        }
+        else
+        {
+            return text;
+        }
     }
 }

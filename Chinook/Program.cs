@@ -1,22 +1,23 @@
 using Chinook;
 using Chinook.Areas.Identity;
 using Chinook.Models;
+using Chinook.Startup;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContextFactory<ChinookContext>(opt => opt.UseSqlite(connectionString));
-builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddDefaultIdentity<ChinookUser>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddEntityFrameworkStores<ChinookContext>();
 
-builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor();
+IWebHostEnvironment env = builder.Environment;
 
-builder.Services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ChinookUser>>();
+// Get configuration
+IConfiguration config = builder.Configuration;
+
+// Add services to the container.
+builder.Services.ConfigureServices(config, env);
+
+builder.Host.ConfigureAppSettings();
 
 var app = builder.Build();
 
