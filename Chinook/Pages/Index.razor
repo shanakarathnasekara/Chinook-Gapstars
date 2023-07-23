@@ -1,8 +1,6 @@
 ﻿@page "/"
 @attribute [Authorize]
 
-@using Chinook.Common.Models;
-@using Chinook.Models
 @using Chinook.Services.Albums;
 @using Chinook.Services.Artists;
 @using Microsoft.EntityFrameworkCore;
@@ -17,18 +15,7 @@
 
 <h1>Artists</h1>
 
-@*Error message alert box*@
-@if (!string.IsNullOrWhiteSpace(_errorMessage))
-{
-    <div class="alert alert-danger fade show">
-        <div class="d-flex align-items-start">
-            <div class="flex-grow-1">
-                @_errorMessage
-            </div>
-            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseErrorMessage"></button>
-        </div>
-    </div>
-}
+<AlertBox errorMessage="@_errorMessage"></AlertBox>
 
 @if (_artistsData == null)
 {

@@ -1,40 +1,18 @@
 ﻿@page "/playlist/{PlaylistId:long}"
 @attribute [Authorize]
 
-@using Chinook.Common.Models;
-@using Chinook.Models
 @using Chinook.Services.Playlist;
+@using Chinook.Services.Users;
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims;
 
 @inject IPlaylistService playListService;
+@inject IUserService userService;
 @inject ILogger<PlaylistPage> logger;
 
 <h1>Playlist <strong>@_playlist.Name</strong></h1>
 
-@if (!string.IsNullOrWhiteSpace(_infoMessage))
-{
-    <div class="alert alert-info fade show">
-        <div class="d-flex align-items-start">
-            <div class="flex-grow-1">
-                @_infoMessage
-            </div>
-            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseInfoMessage"></button>
-        </div>
-    </div>
-}
-
-@if (!string.IsNullOrWhiteSpace(_errorMessage))
-{
-    <div class="alert alert-danger fade show">
-        <div class="d-flex align-items-start">
-            <div class="flex-grow-1">
-                @_errorMessage
-            </div>
-            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseErrorMessage"></button>
-        </div>
-    </div>
-}
+<AlertBox infoMessage="@_infoMessage" errorMessage="@_errorMessage"></AlertBox>
 
 @if (_playlist == null)
 {
@@ -76,7 +54,7 @@ else
                                     }
 
                                 }
-                                <a href="#" class="m-1 pl-3" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId, _playlist.Name))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
+                                <a href="#" class="m-1 pl-3" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track, _playlist.Name))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
                             </div>
                         </td>
                     </tr>
@@ -99,8 +77,9 @@ else
     {
         try
         {
-            _currentUserId = await GetUserId();
             await InvokeAsync(StateHasChanged);
+            ClaimsPrincipal user = (await authenticationState).User;
+            _currentUserId = userService.GetUserId(user);
             _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
 
         }
@@ -130,26 +109,6 @@ else
         {
             logger.LogError(ex.Message?.ToString());
         }
-    }
-
-    private async Task<string> GetUserId()
-    {
-        string userId = "";
-        try
-        {
-            var user = (await authenticationState).User;
-            userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
-        }
-        catch (CustomException ex)
-        {
-            logger.LogError(ex.CustomMessage);
-            await DisplayErrorMessage(ex.CustomMessage);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex.Message?.ToString());
-        }        
-        return userId;
     }
 
     private async Task FavoriteTrack(long trackId)
@@ -190,13 +149,13 @@ else
         }        
     }
 
-    private async void RemoveTrack(long trackId, string playlistName)
+    private async void RemoveTrack(ClientModels.PlaylistTrack track, string playlistName)
     {
         try
         {
-            await playListService.RemoveTrackFromPlaylist(trackId, playlistName, _currentUserId);
+            await playListService.RemoveTrackFromPlaylist(track.TrackId, playlistName, _currentUserId);
             _playlist = await playListService.RetrieveSpecificPlaylist(PlaylistId, _currentUserId);
-            CloseInfoMessage();
+            _infoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} successfully removed from playlist {playlistName}.";
         }
         catch (CustomException ex)
         {

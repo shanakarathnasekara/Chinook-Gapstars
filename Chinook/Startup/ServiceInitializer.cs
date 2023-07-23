@@ -6,6 +6,8 @@ using Chinook.Services.Playlist;
 using Chinook.Services.Albums;
 using Chinook.Services.Artists;
 using Chinook.Services.EventsStreaming;
+using Chinook.Services.Tracks;
+using Chinook.Services.Users;
 
 namespace Chinook.Startup
 {
@@ -24,6 +26,8 @@ namespace Chinook.Startup
             services.AddScoped<IPlaylistService, PlaylistService>();
             services.AddScoped<IAlbumService, AlbumService>();
             services.AddScoped<IArtistService, ArtistService>();
+            services.AddScoped<ITrackService, TrackService>();
+            services.AddScoped<IUserService, UserService>();
             services.AddScoped<EventsService>();
         }
 

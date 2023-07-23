@@ -1,43 +1,21 @@
 ﻿@page "/artist/{ArtistId:long}"
 @using Chinook.ClientModels;
-@using Chinook.Common.Models;
-@using Chinook.Models;
+@using Chinook.Services.Tracks;
 @using Chinook.Services.Artists;
 @using Chinook.Services.EventsStreaming;
 @using Chinook.Services.Playlist;
 @using System.Security.Claims;
+@using Chinook.Services.Users;
 @attribute [Authorize]
 
 @inject IPlaylistService playListService;
 @inject IArtistService artistService;
+@inject ITrackService trackService;
+@inject IUserService userService;
 @inject EventsService eventsService;
 @inject ILogger<ArtistPage> logger;
 
-@*Info message alert box*@
-@if (!string.IsNullOrWhiteSpace(_infoMessage))
-{
-    <div class="alert alert-info fade show">
-        <div class="d-flex align-items-start">
-            <div class="flex-grow-1">
-                @_infoMessage
-            </div>
-            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseInfoMessage"></button>
-        </div>
-    </div>
-}
-
-@*Error message alert box*@
-@if (!string.IsNullOrWhiteSpace(_errorMessage))
-{
-    <div class="alert alert-danger fade show">
-        <div class="d-flex align-items-start">
-            <div class="flex-grow-1">
-                @_errorMessage
-            </div>
-            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseErrorMessage"></button>
-        </div>
-    </div>
-}
+<AlertBox infoMessage="@_infoMessage" errorMessage="@_errorMessage"></AlertBox>
 
 @if (_artistData == null)
 {
@@ -98,11 +76,12 @@ else
         try
         {
             await InvokeAsync(StateHasChanged);
-            _currentUserId = await GetUserId();
+            ClaimsPrincipal user = (await authenticationState).User;
+            _currentUserId = userService.GetUserId(user);
 
             // Load initial data
             _artistData = (await artistService.GetArtistsFromDb()).SingleOrDefault(a => a.ArtistId == ArtistId);
-            _tracks = await playListService.RetrieveTracksList(_artistData.ArtistId, _currentUserId);
+            _tracks = await trackService.RetrieveTracksList(_artistData.ArtistId, _currentUserId);
             _playListData = await playListService.RetrieveUsersListofPlaylist(_currentUserId);
         }
         catch (CustomException ex)
@@ -117,33 +96,12 @@ else
 
     }
 
-    private async Task<string> GetUserId()
-    {
-        string userId = "";
-        try
-        {
-            var user = (await authenticationState).User;
-            userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
-        }
-        catch (CustomException ex)
-        {
-            logger.LogError(ex.CustomMessage);
-            await DisplayErrorMessage(ex.CustomMessage);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex.Message?.ToString());
-        }
-
-        return userId;        
-    }
-
     private async Task FavoriteTrack(long trackId)
     {
         try
         {
             Track track = await playListService.AddTrackToFavorites(trackId, _currentUserId);
-            _tracks = await playListService.RetrieveTracksList(_artistData.ArtistId, _currentUserId);
+            _tracks = await trackService.RetrieveTracksList(_artistData.ArtistId, _currentUserId);
             _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} added to playlist Favorites.";
         }
         catch (CustomException ex)
@@ -163,7 +121,7 @@ else
         try
         {
             Track track = await playListService.RemoveTrackFromFavorites(trackId, _currentUserId);
-            _tracks = await playListService.RetrieveTracksList(_artistData.ArtistId, _currentUserId);
+            _tracks = await trackService.RetrieveTracksList(_artistData.ArtistId, _currentUserId);
             _infoMessage = $"Track {track.Album.Artist.Name} - {track.Album.Title} - {track.Name} removed from playlist Favorites.";
         }
         catch (CustomException ex)
@@ -194,7 +152,7 @@ else
                 if (string.IsNullOrWhiteSpace(_dropDownSelection) && _playListData.Count() == 0)
                 {
                     _playlistDialog.Close();
-                    await DisplayErrorMessage("Playlist name cannot be empty. Add a valid new playlistname.");
+                    await DisplayErrorMessage("Playlist name cannot be empty. Add a valid new playlist name.");
                     return;
                 }
 
@@ -217,8 +175,8 @@ else
             CloseInfoMessage();
             CloseErrorMessage();
 
-            _infoMessage = $"Track {_artistData.ArtistName} - {_selectedTrack.AlbumTitle} - {_selectedTrack.TrackName} added to playlist {playListName}.";
             _playlistDialog.Close();
+            _infoMessage = $"Track {_artistData.ArtistName} - {_selectedTrack.AlbumTitle} - {_selectedTrack.TrackName} added to playlist {playListName}.";
         }
         catch (CustomException ex)
         {
@@ -242,11 +200,6 @@ else
         _infoMessage = "";
     }
 
-    private void CloseErrorMessage()
-    {
-        _errorMessage = "";
-    }
-
     private async Task DisplayErrorMessage(string errorMsg)
     {
         _errorMessage = $"{errorMsg}";
@@ -254,6 +207,11 @@ else
         _errorMessage = "";
         StateHasChanged();
     }
+
+    private void CloseErrorMessage()
+    {
+        _errorMessage = "";
+    }    
 }
 
 <Modal @ref="_playlistDialog">

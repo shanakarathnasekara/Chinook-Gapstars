@@ -1,6 +1,4 @@
-﻿using Chinook.Common.Models;
-using Chinook.Models;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+﻿using Chinook.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Chinook.Services.Artists

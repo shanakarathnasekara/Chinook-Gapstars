@@ -1,4 +1,4 @@
-﻿using Chinook.Common.Models;
+﻿using Chinook.Shared.Models;
 using Chinook.Models;
 using Microsoft.EntityFrameworkCore;
 

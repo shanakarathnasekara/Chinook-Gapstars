@@ -1,10 +1,7 @@
 ﻿using Chinook.ClientModels;
-using Chinook.Common.Models;
 using Chinook.Models;
-using Chinook.Pages;
-using Chinook.Services.EventsStreaming;
+using Chinook.Shared.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Net;
 
 namespace Chinook.Services.Playlist
 {
@@ -19,6 +16,7 @@ namespace Chinook.Services.Playlist
 
         #region Public methods
 
+        #region Favorites playlist
         // Method to create a favourite playlist by default
         public async Task InitiatingFavoritePlaylist(string currentUserId)
         {
@@ -80,6 +78,10 @@ namespace Chinook.Services.Playlist
             return track;
         }
 
+        #endregion
+
+        #region Playlists related functionality
+
         // Retrieve specific playlist data
         public async Task<ClientModels.Playlist> RetrieveSpecificPlaylist(long playlistId, string currentUserId)
         {
@@ -109,32 +111,6 @@ namespace Chinook.Services.Playlist
             }
 
             return playlist;
-        }
-
-        // Retrieve tracks data
-        public async Task<List<PlaylistTrack>> RetrieveTracksList(long artistId, string currentUserId)
-        {
-            var tracks = await _dbContext.Tracks.Where(a => a.Album.ArtistId == artistId)
-            .Include(a => a.Album)
-            .Include(a => a.Playlists)
-            .ThenInclude(p => p.UserPlaylists)
-            .Select(t => new PlaylistTrack()
-            {
-                AlbumTitle = (t.Album == null ? "-" : t.Album.Title),
-                TrackId = t.TrackId,
-                TrackName = t.Name,
-                IsFavorite = t.Playlists.Any(p => p.UserPlaylists.Any(up => up.UserId == currentUserId && up.Playlist.Name == "Favorites"))
-            }).ToListAsync();
-
-            if (tracks == null)
-            {
-                throw new CustomException
-                {
-                    CustomMessage = "Error occurred when retrieving tracks"
-                };
-            }
-
-            return tracks;
         }
 
         // Retrieve user specific list of playlists
@@ -229,6 +205,7 @@ namespace Chinook.Services.Playlist
 
             return favoritePlaylist.PlaylistId;
         }
+        #endregion
         #endregion
 
         #region Private methods

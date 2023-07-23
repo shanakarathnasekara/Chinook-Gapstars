@@ -1,19 +1,20 @@
-﻿@using Chinook.Common.Models;
-@using Chinook.Services.Playlist;
+﻿@using Chinook.Services.Playlist;
 @using System.Security.Claims;
 @using Chinook.Services;
 @using Chinook.Services.EventsStreaming;
+@using Chinook.Services.Users;
 @inject IPlaylistService playlistService;
 @inject EventsService eventsService;
+@inject IUserService userService;
 @inject ILogger<NavMenu> logger;
 
 
-<div class="top-row ps-3 navbar navbar-dark">
+<div class="top-row ps-3 navbar navbar-dark">    
     <div class="container-fluid">
         <a class="navbar-brand" href="">Chinook</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
-        </button>
+        </button>        
     </div>
 </div>
 
@@ -45,7 +46,7 @@
 @code {
     private bool collapseNavMenu = true;
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
-    private string currentUserId;
+    private string _currentUserId;
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
     public List<ClientModels.PlaylistNavitem> _userPlaylistData;
     public long FavoritePlaylistId = 0;
@@ -55,13 +56,14 @@
         try
         {
             await InvokeAsync(StateHasChanged);
-            currentUserId = await GetUserId();
-            _userPlaylistData = await playlistService.RetrieveUsersListPlaylistNavitems(currentUserId);
-            if (currentUserId != null)
+            ClaimsPrincipal user = (await authenticationState).User;
+            _currentUserId = userService.GetUserId(user);
+            _userPlaylistData = await playlistService.RetrieveUsersListPlaylistNavitems(_currentUserId);
+            if (_currentUserId != null)
             {
-                await playlistService.InitiatingFavoritePlaylist(currentUserId);
+                await playlistService.InitiatingFavoritePlaylist(_currentUserId);
             }
-            FavoritePlaylistId = await playlistService.RetrieveUsersFavoritePlaylistId(currentUserId);
+            FavoritePlaylistId = await playlistService.RetrieveUsersFavoritePlaylistId(_currentUserId);
             eventsService.PlaylistItemAdded += HandleEventChanged;
         }
         catch (CustomException ex)
@@ -78,7 +80,7 @@
     {
        Task.Run(async () =>
          {
-              _userPlaylistData = await playlistService.RetrieveUsersListPlaylistNavitems(currentUserId);
+              _userPlaylistData = await playlistService.RetrieveUsersListPlaylistNavitems(_currentUserId);
              await InvokeAsync(StateHasChanged);
          });
     }
@@ -86,27 +88,6 @@
     protected void Dispose()
     {
         eventsService.PlaylistItemAdded -= HandleEventChanged;
-    }
-
-
-    private async Task<string> GetUserId()
-    {
-        string userId = "";
-        try
-        {
-            var user = (await authenticationState).User;
-            userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
-        }
-        catch (CustomException ex)
-        {
-            logger.LogError(ex.CustomMessage);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex.Message?.ToString());
-        }
-
-        return userId;
     }
 
     private void ToggleNavMenu()
